@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Plane, MapPin, Calendar, Users, Sprout, WandSparkles, Share, Edit, Download, Save, Copy, Building,Utensils,Ticket,Palette,TreePine,Sun,Music,PartyPopper, DollarSign } from 'lucide-react';
+// --- NEW: Added 'Home' icon ---
+import { Plane, MapPin, Calendar, Users, Sprout, WandSparkles, Share, Edit, Download, Save, Copy, Building,Utensils,Ticket,Palette,TreePine,Sun,Music,PartyPopper, DollarSign, Home } from 'lucide-react';
+// --- NEW: Import charting components ---
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
+
+// --- Reusable Input Component ---
 const InputField = ({ icon, label, as: Component = 'input', ...props }) => {
   const isSelect = Component === 'select';
   
@@ -118,6 +122,7 @@ function App() {
     }));
   };
 
+  // --- NEW --- Handler for editing simple fields like Estimated Cost
   const handleCostChange = (dayKey, value) => {
     setItinerary(prev => ({
       ...prev,
@@ -128,6 +133,8 @@ function App() {
     }));
   };
 
+
+  // --- NEW --- Handler for the Share Button (Copy to Clipboard)
   const handleShare = () => {
     if (!itinerary) return;
 
@@ -139,11 +146,14 @@ function App() {
     Object.keys(itinerary).forEach(dayKey => {
       const day = itinerary[dayKey];
       itineraryText += `${dayKey}:\n`;
+      // --- UPDATED for new data structure ---
       itineraryText += `  - Morning: ${day.Morning.Activity} (${day.Morning.Notes})\n`;
       itineraryText += `  - Lunch: ${day.Lunch.Restaurant} (${day.Lunch.Cuisine})\n`;
       itineraryText += `  - Afternoon: ${day.Afternoon.Activity} (${day.Afternoon.Notes})\n`;
       itineraryText += `  - Dinner: ${day.Dinner.Restaurant} (${day.Dinner.Cuisine})\n`;
-      itineraryText += `  - Cost: ${day["Estimated Cost"]}\n\n`;
+      // --- UPDATED: Add Hotel Cost ---
+      itineraryText += `  - Hotel: ${day.Hotel.Name} (${day.Hotel.Type}) - Cost: ${day.Hotel.Cost}\n`;
+      itineraryText += `  - Food & Activities Cost: ${day["Estimated Cost"]}\n\n`;
     });
 
     // Use document.execCommand for broader compatibility as per instructions
@@ -228,7 +238,9 @@ function App() {
           `Lunch: ${day.Lunch.Restaurant} - ${day.Lunch.Cuisine} (${day.Lunch["Price Range"]})`,
           `Afternoon: ${day.Afternoon.Activity} - ${day.Afternoon.Notes}`,
           `Dinner: ${day.Dinner.Restaurant} - ${day.Dinner.Cuisine} (${day.Dinner["Price Range"]})`,
-          `Estimated Cost: ${day["Estimated Cost"]}`
+          // --- UPDATED: Add Hotel Cost ---
+          `Hotel: ${day.Hotel.Name} - ${day.Hotel.Type} (${day.Hotel.Cost})`,
+          `Food & Activities Cost: ${day["Estimated Cost"]}`
         ];
 
         dayDetails.forEach(detail => {
@@ -290,19 +302,36 @@ function App() {
       // --- NEW: Process data for chart ---
       const processedChartData = Object.keys(data.itinerary).map(dayKey => {
         const day = data.itinerary[dayKey];
-        const costString = day["Estimated Cost"] || "0 USD";
-        const parts = costString.split(' ')[0].split('-'); // "100-150" -> ["100", "150"] or "100" -> ["100"]
         
+        // --- UPDATED: Calculate total daily cost for chart (Hotel + Activities) ---
+        const costString = day["Estimated Cost"] || "0 USD";
+        // --- FIX: Remove commas before splitting/parsing ---
+        const costParts = costString.split(' ')[0].replace(/,/g, '').split('-');
+        
+        const hotelCostString = day.Hotel?.Cost || "0 USD";
+        // --- FIX: Remove commas before splitting/parsing ---
+        const hotelCostParts = hotelCostString.split(' ')[0].replace(/,/g, '').split('-');
+
         let avgCost = 0;
-        if (parts.length === 2) {
-          avgCost = (parseInt(parts[0], 10) + parseInt(parts[1], 10)) / 2;
-        } else if (parts.length === 1) {
-          avgCost = parseInt(parts[0], 10);
+        let avgHotelCost = 0;
+
+        if (costParts.length === 2) {
+          avgCost = (parseInt(costParts[0], 10) + parseInt(costParts[1], 10)) / 2;
+        } else if (costParts.length === 1) {
+          avgCost = parseInt(costParts[0], 10);
         }
 
+        if (hotelCostParts.length === 2) {
+          avgHotelCost = (parseInt(hotelCostParts[0], 10) + parseInt(hotelCostParts[1], 10)) / 2;
+        } else if (hotelCostParts.length === 1) {
+          avgHotelCost = parseInt(hotelCostParts[0], 10);
+        }
+
+        const totalDailyCost = (isNaN(avgCost) ? 0 : avgCost) + (isNaN(avgHotelCost) ? 0 : avgHotelCost);
+        
         return {
           name: dayKey.replace(' ', ''), // "Day 1" -> "Day1"
-          Cost: isNaN(avgCost) ? 0 : avgCost,
+          Cost: totalDailyCost,
         };
       });
       setChartData(processedChartData); // Set the new state
@@ -467,7 +496,7 @@ function App() {
           {/* --- NEW: COST VISUALIZATION --- */}
           {chartData.length > 0 && (
             <div className="mt-6 mb-6">
-              <h4 className="text-xl font-semibold text-cyan-800 mb-3 text-center">Daily Cost Breakdown</h4>
+              <h4 className="text-xl font-semibold text-cyan-800 mb-3 text-center">Daily Cost Breakdown (Hotel + Activities)</h4>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -614,21 +643,63 @@ function App() {
                             />
                           </div>
                         ) : (
+                          // --- FIX: Corrected typo 'CZisine' to 'Cuisine' ---
                           <p>{day.Dinner.Restaurant} <span className="text-sm text-cyan-700">({day.Dinner.Cuisine} - {day.Dinner["Price Range"]})</span></p>
                         )}
                       </div>
                     </div>
+                    
+                    {/* --- UPDATED: Hotel Display --- */}
+                    <div className="flex">
+                      <Home size={16} className="mr-2 text-cyan-600 flex-shrink-0" />
+                      <div>
+                        <span className="font-semibold">Hotel / Stay</span>
+                         {isEditing ? (
+                           <div className="mt-1 space-y-1">
+                            <input
+                              type="text"
+                              value={day.Hotel.Name}
+                              onChange={(e) => handleItineraryChange(dayKey, 'Hotel', 'Name', e.target.value)}
+                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
+                              placeholder="Hotel Name"
+                            />
+                            <input
+                              type="text"
+                              value={day.Hotel.Type}
+                              // --- FIX: Corrected typo 'e.g.target.value' to 'e.target.value' ---
+                              onChange={(e) => handleItineraryChange(dayKey, 'Hotel', 'Type', e.target.value)}
+                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
+                              placeholder="Hotel Type"
+                            />
+                            {/* --- NEW: Hotel Cost Input --- */}
+                            <input
+                              type="text"
+                              value={day.Hotel.Cost}
+                              onChange={(e) => handleItineraryChange(dayKey, 'Hotel', 'Cost', e.target.value)}
+                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
+                              placeholder="Hotel Cost"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <p>{day.Hotel.Name} <span className="text-sm text-cyan-700">({day.Hotel.Type})</span></p>
+                            <p className="text-sm text-cyan-700 font-medium">Cost: {day.Hotel.Cost}</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-                    {/* --- Cost (with currency symbol) --- */}
+                    {/* --- UPDATED: Cost (with currency symbol) --- */}
                     <div className="flex items-center pt-2">
                       <DollarSign size={16} className="mr-2 text-cyan-600 flex-shrink-0" />
-                      <span className="font-semibold">Estimated Cost:</span>
+                      {/* --- UPDATED: Label --- */}
+                      <span className="font-semibold">Food & Activities Cost:</span>
                       {isEditing ? (
                         <input
                           type="text"
                           value={day["Estimated Cost"]}
                           onChange={(e) => handleCostChange(dayKey, e.target.value)}
-                          className="w-1/2 ml-2 p-1 border border-cyan-300 rounded-md bg-cyan-50"
+                          className="w-1-2 ml-2 p-1 border border-cyan-300 rounded-md bg-cyan-50"
                           rows={1}
                         />
                       ) : (
@@ -647,4 +718,3 @@ function App() {
 }
 
 export default App;
-

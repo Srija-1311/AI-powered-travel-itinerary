@@ -17,7 +17,7 @@ const groq = new Groq({
 app.use(cors());
 app.use(express.json());
 
-// --- NEW: Helper function to extract JSON from AI response ---
+// --- Helper function to extract JSON from AI response ---
 function extractJSON(text) {
   // Find the first '{' and the last '}'
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -51,21 +51,29 @@ You MUST follow these rules:
 4.  The "Days" object will contain keys like "Day 1", "Day 2", etc.
 5.  Each "Day" object must contain:
     - "Morning": An object with "Activity", "Notes", and "Type" (e.g., "Historic Site", "Food Tour", "Museum").
-    - "Lunch": An object with "Restaurant", "Cuisine", and "Price Range" (e.g., "$", "$$", "$$$").
+    - "Lunch": An object with "Restaurant", "Cuisine", and "Price Range" (e.g., "₹", "₹₹", "₹₹₹" or "$", "$$", "$$$").
     - "Afternoon": An object with "Activity", "Notes", and "Type".
     - "Dinner": An object with "Restaurant", "Cuisine", and "Price Range".
-    - "Estimated Cost": A string representing the estimated cost for that day (e.g., "100-150 USD").
-6.  Wrap your entire response in a single JSON object. Do not add any text before or after the JSON.
+    - **NEW:** "Hotel": An object with:
+        - "Name": A top-rated hotel.
+        - "Type": (e.g., "Hotel", "Boutique", "Staycation").
+        - "Cost": The estimated cost for one night (e.g., "3000-4000 INR").
+    - "Estimated Cost": A string representing the estimated cost for the day's Food & Activities.
+6.  **CRITICAL RULE (HOTEL):** The "Hotel" MUST be geographically convenient for the day's activities (especially the afternoon/evening ones).
+7.  **CRITICAL RULE (CURRENCY):** You MUST use the local currency for the provided \`${destination}\`. (e.g., "INR" for India, "EUR" for France).
+8.  **CRITICAL RULE (COST):** The "Estimated Cost" for the day MUST include the cost of Lunch, Dinner, and Activities. **It MUST NOT include the Hotel cost.** The "Hotel" cost must be separate in the "Hotel" object.
+9.  Wrap your entire response in a single JSON object. Do not add any text before or after the JSON.
 
 Example Output Structure:
 {
   "Days": {
     "Day 1": {
       "Morning": { "Activity": "Explore...", "Notes": "Get tickets...", "Type": "Museum" },
-      "Lunch": { "Restaurant": "Local Cafe", "Cuisine": "Local", "Price Range": "$$" },
+      "Lunch": { "Restaurant": "Local Cafe", "Cuisine": "Local", "Price Range": "₹₹" },
       "Afternoon": { "Activity": "Visit...", "Notes": "Walk...", "Type": "Park" },
-      "Dinner": { "Restaurant": "Nice Restaurant", "Cuisine": "Italian", "Price Range": "$$$" },
-      "Estimated Cost": "120-170 USD"
+      "Dinner": { "Restaurant": "Nice Restaurant", "Cuisine": "Indian", "Price Range": "₹₹₹" },
+      "Hotel": { "Name": "Grand Hotel", "Type": "Hotel", "Cost": "4000-5000 INR" },
+      "Estimated Cost": "3000-5000 INR"
     }
   }
 }`;
@@ -83,8 +91,7 @@ Example Output Structure:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      model: 'llama-3.1-8b-instant', // Updated model
-      // --- REMOVED: response_format to allow for more flexible parsing ---
+      model: 'llama-3.1-8b-instant',
     });
 
     const aiResponse = chatCompletion.choices[0]?.message?.content;
@@ -94,7 +101,7 @@ Example Output Structure:
       throw new Error('No response from AI');
     }
 
-    // --- NEW: Use the robust JSON extractor ---
+    // --- Use the robust JSON extractor ---
     const jsonString = extractJSON(aiResponse);
     if (!jsonString) {
       console.error("Failed to extract JSON from response:", aiResponse);
@@ -108,35 +115,42 @@ Example Output Structure:
       throw new Error('AI response was not in the expected format (no "Days" key).');
     }
 
-    // --- NEW: Calculate Total Cost ---
+    // --- Calculate Total Cost (NEW LOGIC) ---
     let totalCostLow = 0;
     let totalCostHigh = 0;
-    let currency = 'USD'; // Default currency
+    let currency = ''; // Will be set from the first day's cost
 
     try {
-      Object.values(itineraryData).forEach(day => {
-        const costString = day["Estimated Cost"]; // e.g., "100-150 USD"
-        const parts = costString.split(' '); // ["100-150", "USD"]
+      Object.values(itineraryData).forEach((day, index) => {
+        // Get Food/Activity Cost
+        const costString = day["Estimated Cost"] || "0 N/A";
+        const costParts = costString.split(' ');
+        const costRange = (costParts[0] || "0").split('-');
         
-        if (parts.length >= 1) { // More robust check
-          currency = parts[1] || 'USD'; // Handle missing currency
-          const range = parts[0].split('-'); // ["100", "150"]
-          
-          if (range.length === 2) {
-            totalCostLow += parseInt(range[0], 10) || 0;
-            totalCostHigh += parseInt(range[1], 10) || 0;
-          } else if (range.length === 1) {
-            const cost = parseInt(range[0], 10) || 0;
-            totalCostLow += cost;
-            totalCostHigh += cost;
-          }
+        // Get Hotel Cost
+        const hotelCostString = day.Hotel?.Cost || "0 N/A";
+        const hotelCostParts = hotelCostString.split(' ');
+        const hotelCostRange = (hotelCostParts[0] || "0").split('-');
+
+        if (index === 0) { // Set currency based on the first day
+          currency = costParts[1] || hotelCostParts[1] || 'N/A';
         }
+        
+        // --- Calculate Daily Low End ---
+        const dailyLow = (parseInt(costRange[0], 10) || 0) + (parseInt(hotelCostRange[0], 10) || 0);
+        totalCostLow += dailyLow;
+
+        // --- Calculate Daily High End ---
+        const dailyHigh = 
+          (parseInt(costRange[1], 10) || parseInt(costRange[0], 10) || 0) + 
+          (parseInt(hotelCostRange[1], 10) || parseInt(hotelCostRange[0], 10) || 0);
+        totalCostHigh += dailyHigh;
       });
     } catch (calcError) {
       console.error("Error calculating total cost:", calcError);
-      // Don't fail the request, just send 0
       totalCostLow = 0;
       totalCostHigh = 0;
+      currency = 'Error';
     }
 
     const totalCostString = totalCostLow === totalCostHigh 
