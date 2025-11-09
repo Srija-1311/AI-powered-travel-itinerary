@@ -243,8 +243,6 @@ function App() {
     setIsEditing(false);
 
     try {
-      // --- FIX: The URL was missing the API endpoint path ---
-      // I am adding '/api/generate-itinerary' to the end of the URL.
       const response = await fetch('https://ai-powered-travel-itinerary-backend.onrender.com/api/generate-itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -257,6 +255,10 @@ function App() {
       }
 
       const data = await response.json();
+      if (!data.itinerary) {
+        throw new Error("No itinerary data received from server.");
+      }
+
       setItinerary(data.itinerary);
       setTotalCost(data.totalCost);
       setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1'); // Set first day as active
@@ -264,25 +266,28 @@ function App() {
       // --- Chart Data Processing (with comma fix) ---
       const processedChartData = Object.keys(data.itinerary).map(dayKey => {
         const day = data.itinerary[dayKey];
-        // --- FIX: Remove commas before parsing ---
-        const costString = day["Estimated Cost"]?.toString().replace(/,/g, '') || "0 USD";
-        const costParts = costString.split(' ')[0].split('-');
-        const hotelCostString = day.Hotel?.Cost?.toString().replace(/,/g, '') || "0 USD";
-        const hotelCostParts = hotelCostString.split(' ')[0].split('-');
+        if (!day) return { name: dayKey, Cost: 0 }; // Safety check
+
+        // --- FIX: Remove commas (and any other non-numeric chars except '-') before parsing ---
+        const costString = day["Estimated Cost"]?.toString().replace(/[^0-9-]/g, '') || "0";
+        const costParts = costString.split('-');
+        
+        const hotelCostString = day.Hotel?.Cost?.toString().replace(/[^0-9-]/g, '') || "0";
+        const hotelCostParts = hotelCostString.split('-');
         
         let avgCost = 0;
         let avgHotelCost = 0;
 
         if (costParts.length === 2) {
-          avgCost = (parseInt(costParts[0], 10) + parseInt(costParts[1], 10)) / 2;
+          avgCost = (parseInt(costParts[0], 10) || 0 + parseInt(costParts[1], 10) || 0) / 2;
         } else if (costParts.length === 1) {
-          avgCost = parseInt(costParts[0], 10);
+          avgCost = parseInt(costParts[0], 10) || 0;
         }
 
         if (hotelCostParts.length === 2) {
-          avgHotelCost = (parseInt(hotelCostParts[0], 10) + parseInt(hotelCostParts[1], 10)) / 2;
+          avgHotelCost = (parseInt(hotelCostParts[0], 10) || 0 + parseInt(hotelCostParts[1], 10) || 0) / 2;
         } else if (hotelCostParts.length === 1) {
-          avgHotelCost = parseInt(hotelCostParts[0], 10);
+          avgHotelCost = parseInt(hotelCostParts[0], 10) || 0;
         }
         
         const totalDailyCost = (isNaN(avgCost) ? 0 : avgCost) + (isNaN(avgHotelCost) ? 0 : avgHotelCost);
@@ -293,6 +298,7 @@ function App() {
       setUiState('results'); // <-- NEW: Switch to results view
 
     } catch (err) {
+      console.error("Error in handleGenerateItinerary:", err); // Added for better debugging
       setError(err.message);
       setUiState('error'); // <-- NEW: Go to error view
     }
@@ -561,7 +567,6 @@ function App() {
                 {isEditing ? (
                   <div className="mt-1 space-y-1">
                     <input type="text" value={day.Dinner.Restaurant} onChange={(e) => handleItineraryChange(activeDay, 'Dinner', 'Restaurant', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
-                    {/* --- FIX: The truncated line is now complete --- */}
                     <input type="text" value={day.Dinner.Cuisine} onChange={(e) => handleItineraryChange(activeDay, 'Dinner', 'Cuisine', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
                   </div>
                 ) : (
@@ -610,8 +615,10 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <XAxis dataKey="name" stroke="#3730a3" />
-                  <YAxis stroke="#3T30a3" />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 2S5, 0.9)', borderRadius: '8px', borderColor: '#4f46e5' }} labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} />
+                  {/* --- FIX: Typo in stroke color --- */}
+                  <YAxis stroke="#3730a3" />
+                  {/* --- FIX: Typo in backgroundColor --- */}
+                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', borderColor: '#4f46e5' }} labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} />
                   <Legend />
                   <Bar dataKey="Cost" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                 </BarChart>
