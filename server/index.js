@@ -6,10 +6,10 @@ import Groq from 'groq-sdk';
 const app = express();
 const port = 3001;
 
-// --- FIX: Specific CORS Configuration ---
-// This tells our server to ONLY accept requests from our live Netlify app.
+// --- FIX: Dynamic CORS Configuration ---
+// This tells our server to trust the URL we set in our environment variables
 const corsOptions = {
-  origin: 'https://aitravelplanner.netlify.app', // <-- This is your live frontend URL
+  origin: process.env.FRONTEND_URL, // <-- Reads the new variable
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
