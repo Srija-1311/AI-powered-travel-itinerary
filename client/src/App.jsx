@@ -56,9 +56,7 @@ const ActivityIcon = ({ type }) => {
   }
 };
 
-// --- Loading Component (NEW) ---
-// This component encapsulates the hooks for the loading message,
-// fixing the "Rules of Hooks" violation.
+// --- Loading Component (This component fixes the crash) ---
 const LoadingScreen = () => {
   const messages = ["Finding the best spots...", "Packing your virtual bags...", "Checking passport...", "Crafting your adventure...", "Asking the AI..."];
   const [message, setMessage] = useState(messages[0]);
@@ -128,14 +126,13 @@ function App() {
     setError(null);
   };
 
-  // --- ITINERARY EDIT HANDLERS (No changes) ---
+  // --- ITINERARY EDIT HANDLERS ---
   const handleItineraryChange = (dayKey, period, field, value) => {
     setItinerary(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [period]: { ...prev[dayKey][period], [field]: value }}}));
   };
   const handleCostChange = (dayKey, value) => {
     setItinerary(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], "Estimated Cost": value }}));
   };
-  // --- NEW: Edit handler for Hotel Cost ---
   const handleHotelCostChange = (dayKey, value) => {
     setItinerary(prev => ({
       ...prev,
@@ -150,7 +147,7 @@ function App() {
   };
 
 
-  // --- PDF, SHARE, COPY HANDLERS (No changes from previous) ---
+  // --- PDF, SHARE, COPY HANDLERS ---
   const handleShare = () => {
     if (!itinerary) return;
     let itineraryText = `My Trip to ${formData.destination}\n\nTotal Estimated Cost: ${totalCost}\n\n`;
@@ -235,7 +232,7 @@ function App() {
 
   // --- API Call ---
   const handleGenerateItinerary = async () => {
-    setUiState('loading'); // <-- NEW: Set loading state
+    setUiState('loading');
     setError(null);
     setItinerary(null);
     setTotalCost(null);
@@ -261,14 +258,13 @@ function App() {
 
       setItinerary(data.itinerary);
       setTotalCost(data.totalCost);
-      setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1'); // Set first day as active
+      setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1');
 
       // --- Chart Data Processing (with comma fix) ---
       const processedChartData = Object.keys(data.itinerary).map(dayKey => {
         const day = data.itinerary[dayKey];
-        if (!day) return { name: dayKey, Cost: 0 }; // Safety check
+        if (!day) return { name: dayKey, Cost: 0 }; 
 
-        // --- FIX: Remove commas (and any other non-numeric chars except '-') before parsing ---
         const costString = day["Estimated Cost"]?.toString().replace(/[^0-9-]/g, '') || "0";
         const costParts = costString.split('-');
         
@@ -295,12 +291,12 @@ function App() {
       });
       
       setChartData(processedChartData);
-      setUiState('results'); // <-- NEW: Switch to results view
+      setUiState('results'); 
 
     } catch (err) {
-      console.error("Error in handleGenerateItinerary:", err); // Added for better debugging
+      console.error("Error in handleGenerateItinerary:", err); 
       setError(err.message);
-      setUiState('error'); // <-- NEW: Go to error view
+      setUiState('error'); 
     }
   };
   
@@ -315,7 +311,6 @@ function App() {
   ];
 
   // --- RENDER FUNCTIONS ---
-
   const renderForm = () => (
     <div className="max-w-xl mx-auto w-full">
       <header className="text-center mb-8">
@@ -444,19 +439,16 @@ function App() {
   );
 
   const renderResults = () => {
-    if (!itinerary) return renderError(); // Safety check
+    if (!itinerary) return renderError(); 
     
-    // --- FIX: Add a null check for itinerary[activeDay] ---
     const day = itinerary[activeDay];
     if (!day) {
-      // Handle case where activeDay might not exist (e.g., data mismatch)
-      // Fallback to first day
       const firstDayKey = Object.keys(itinerary)[0];
       if (firstDayKey) {
         setActiveDay(firstDayKey);
-        return null; // Will re-render with correct day
+        return null; 
       }
-      return renderError(); // No days found at all
+      return renderError(); 
     }
     
     return (
@@ -583,7 +575,6 @@ function App() {
                   <div className="mt-1 space-y-1">
                     <input type="text" value={day.Hotel.Name} onChange={(e) => handleItineraryChange(activeDay, 'Hotel', 'Name', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
                     <input type="text" value={day.Hotel.Type} onChange={(e) => handleItineraryChange(activeDay, 'Hotel', 'Type', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
-                    {/* --- FIX: Added handler for Hotel Cost edit --- */}
                     <input type="text" value={day.Hotel.Cost} onChange={(e) => handleHotelCostChange(activeDay, e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
                   </div>
                 ) : (
@@ -615,9 +606,7 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <XAxis dataKey="name" stroke="#3730a3" />
-                  {/* --- FIX: Typo in stroke color --- */}
                   <YAxis stroke="#3730a3" />
-                  {/* --- FIX: Typo in backgroundColor --- */}
                   <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', borderColor: '#4f46e5' }} labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} />
                   <Legend />
                   <Bar dataKey="Cost" fill="#4f46e5" radius={[4, 4, 0, 0]} />
