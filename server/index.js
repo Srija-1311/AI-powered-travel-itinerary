@@ -1,182 +1,165 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const port = 3001;
 
-// --- Groq Client ---
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// --- FIX: Specific CORS Configuration ---
+// This tells our server to ONLY accept requests from our live Netlify app.
+const corsOptions = {
+  origin: 'https://aitravelplanner.netlify.app', // <-- This is your live frontend URL
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+// ----------------------------------------
 
-app.use(cors());
 app.use(express.json());
 
-// --- Helper function to extract JSON from AI response ---
-function extractJSON(text) {
-  // Find the first '{' and the last '}'
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return jsonMatch[0];
-  }
-  // Fallback for ```json ... ```
-  const markdownMatch = text.match(/```json\n([\s\S]*?)\n```/);
-  if (markdownMatch && markdownMatch[1]) {
-    return markdownMatch[1];
-  }
-  return null; // No JSON found
-}
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
+// System prompt to instruct the AI
+const systemPrompt = `
+You are a master travel planner AI. A user will provide a destination, trip duration, budget, travel type, and interests.
+Your task is to generate a detailed, day-by-day itinerary in a strict JSON format.
 
-// --- API Endpoint ---
-app.post('/api/generate-itinerary', async (req, res) => {
-  try {
-    const { destination, days, budget, travelType, interests } = req.body;
-    console.log('Received request with:', req.body);
-
-    const interestsString = interests.join(', ');
-
-    // --- System Prompt ---
-    const systemPrompt = `You are a world-class travel planner. Your job is to create a personalized, day-by-day travel itinerary based on user preferences.
-
-You MUST follow these rules:
-1.  You will receive a destination, number of days, budget, travel type, and interests.
-2.  Your response MUST be a single, valid JSON object.
-3.  The JSON object must have a key "Days" which itself is an object.
-4.  The "Days" object will contain keys like "Day 1", "Day 2", etc.
-5.  Each "Day" object must contain:
-    - "Morning": An object with "Activity", "Notes", and "Type" (e.g., "Historic Site", "Food Tour", "Museum").
-    - "Lunch": An object with "Restaurant", "Cuisine", and "Price Range" (e.g., "₹", "₹₹", "₹₹₹" or "$", "$$", "$$$").
-    - "Afternoon": An object with "Activity", "Notes", and "Type".
-    - "Dinner": An object with "Restaurant", "Cuisine", and "Price Range".
-    - **NEW:** "Hotel": An object with:
-        - "Name": A top-rated hotel.
-        - "Type": (e.g., "Hotel", "Boutique", "Staycation").
-        - "Cost": The estimated cost for one night (e.g., "3000-4000 INR").
-    - "Estimated Cost": A string representing the estimated cost for the day's Food & Activities.
-6.  **CRITICAL RULE (HOTEL):** The "Hotel" MUST be geographically convenient for the day's activities (especially the afternoon/evening ones).
-7.  **CRITICAL RULE (CURRENCY):** You MUST use the local currency for the provided \`${destination}\`. (e.g., "INR" for India, "EUR" for France).
-8.  **CRITICAL RULE (COST):** The "Estimated Cost" for the day MUST include the cost of Lunch, Dinner, and Activities. **It MUST NOT include the Hotel cost.** The "Hotel" cost must be separate in the "Hotel" object.
-9.  Wrap your entire response in a single JSON object. Do not add any text before or after the JSON.
-
-Example Output Structure:
-{
-  "Days": {
-    "Day 1": {
-      "Morning": { "Activity": "Explore...", "Notes": "Get tickets...", "Type": "Museum" },
-      "Lunch": { "Restaurant": "Local Cafe", "Cuisine": "Local", "Price Range": "₹₹" },
-      "Afternoon": { "Activity": "Visit...", "Notes": "Walk...", "Type": "Park" },
-      "Dinner": { "Restaurant": "Nice Restaurant", "Cuisine": "Indian", "Price Range": "₹₹₹" },
-      "Hotel": { "Name": "Grand Hotel", "Type": "Hotel", "Cost": "4000-5000 INR" },
-      "Estimated Cost": "3000-5000 INR"
+RULES:
+1.  **JSON ONLY:** You MUST respond with ONLY the JSON object, starting with { and ending with }. Do not include any text before or after the JSON.
+2.  **CURRENCY:** You MUST use the local currency for the destination provided. For example, if the destination is Tokyo, use JPY. If Hyderabad, use INR.
+3.  **COSTS:** The "Hotel" cost must be separate from the "Estimated Cost" (which is for food/activities).
+4.  **HOTEL LOGIC:** For each day, suggest a different hotel that is conveniently located for that day's "Morning" or "Afternoon" activity.
+5.  **STRUCTURE:** Follow this exact JSON structure:
+    {
+      "Days": {
+        "Day 1": {
+          "Morning": { "Activity": "...", "Notes": "...", "Type": "..." },
+          "Lunch": { "Restaurant": "...", "Cuisine": "...", "Price Range": "($/$$/$$$)" },
+          "Afternoon": { "Activity": "...", "Notes": "...", "Type": "..." },
+          "Dinner": { "Restaurant": "...", "Cuisine": "...", "Price Range": "($/$$/$$$)" },
+          "Hotel": { "Name": "...", "Type": "(e.g., Hotel, Hostel, Ryokan)", "Cost": "..." },
+          "Estimated Cost": "..."
+        },
+        "Day 2": { ... },
+        ...
+      }
     }
-  }
-}`;
-
-    // --- User Prompt ---
-    const userPrompt = `Generate a ${days}-day itinerary for a trip to ${destination}.
--   Budget: ${budget}
--   Travel Type: ${travelType}
--   Interests: ${interestsString}
 `;
 
+// API Endpoint
+app.post('/api/generate-itinerary', async (req, res) => {
+  const { destination, days, budget, travelType, interests } = req.body;
+  console.log('Received request with:', req.body);
+
+  const userPrompt = `
+    Destination: ${destination}
+    Duration: ${days} days
+    Budget: ${budget}
+    Travel Type: ${travelType}
+    Interests: ${interests.join(', ')}
+  `;
+
+  try {
     console.log('Calling Groq API...');
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
       ],
-      model: 'llama-3.1-8b-instant',
+      model: "llama-3.1-8b-instant",
     });
 
-    const aiResponse = chatCompletion.choices[0]?.message?.content;
-    console.log('Raw AI Response:', aiResponse);
+    let rawResponse = chatCompletion.choices[0]?.message?.content || "";
+    console.log('Raw AI Response:', rawResponse);
 
-    if (!aiResponse) {
-      throw new Error('No response from AI');
+    // --- More Robust JSON Parsing ---
+    // 1. Find the first '{' and the last '}'
+    const jsonStartIndex = rawResponse.indexOf('{');
+    const jsonEndIndex = rawResponse.lastIndexOf('}');
+    
+    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
+      throw new Error("AI did not return a valid JSON object.");
     }
 
-    // --- Use the robust JSON extractor ---
-    const jsonString = extractJSON(aiResponse);
-    if (!jsonString) {
-      console.error("Failed to extract JSON from response:", aiResponse);
-      throw new Error('AI response was not in the expected format (no JSON found).');
+    // 2. Extract the JSON string
+    const jsonString = rawResponse.substring(jsonStartIndex, jsonEndIndex + 1);
+
+    // 3. Parse the JSON
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error("Failed to parse AI JSON response:", parseError);
+      throw new Error("AI returned malformed JSON.");
+    }
+    // ---------------------------------
+
+    const itinerary = parsedJson.Days;
+    if (!itinerary) {
+      throw new Error("AI response did not contain 'Days' key.");
     }
 
-    const parsedData = JSON.parse(jsonString);
-    const itineraryData = parsedData.Days;
-
-    if (!itineraryData) {
-      throw new Error('AI response was not in the expected format (no "Days" key).');
-    }
-
-    // --- Calculate Total Cost (NEW LOGIC) ---
+    // --- Total Cost Calculation ---
     let totalCostLow = 0;
     let totalCostHigh = 0;
-    let currency = ''; // Will be set from the first day's cost
+    let currency = "USD"; // Default
+    let allCurrenciesSame = true;
+    let firstCurrency = null;
 
-    try {
-      Object.values(itineraryData).forEach((day, index) => {
-        // Get Food/Activity Cost
-        const costString = day["Estimated Cost"] || "0 N/A";
-        const costParts = costString.split(' ');
-        const costRange = (costParts[0] || "0").split('-');
+    Object.values(itinerary).forEach(day => {
+      const costString = day["Estimated Cost"] || "0";
+      const hotelCostString = day.Hotel?.Cost || "0";
+
+      const extractCost = (str) => {
+        const matches = str.replace(/,/g, '').match(/([\d\.]+)/g); // Remove commas, find numbers
+        const currencyMatch = str.match(/([A-Z]{3})/); // Find currency code
         
-        // Get Hotel Cost
-        const hotelCostString = day.Hotel?.Cost || "0 N/A";
-        const hotelCostParts = hotelCostString.split(' ');
-        const hotelCostRange = (hotelCostParts[0] || "0").split('-');
-
-        if (index === 0) { // Set currency based on the first day
-          currency = costParts[1] || hotelCostParts[1] || 'N/A';
+        let low = 0, high = 0;
+        if (matches) {
+          if (matches.length > 1) {
+            low = parseFloat(matches[0]);
+            high = parseFloat(matches[1]);
+          } else if (matches.length === 1) {
+            low = parseFloat(matches[0]);
+            high = low;
+          }
         }
         
-        // --- Calculate Daily Low End ---
-        const dailyLow = (parseInt(costRange[0], 10) || 0) + (parseInt(hotelCostRange[0], 10) || 0);
-        totalCostLow += dailyLow;
+        let ccy = currencyMatch ? currencyMatch[1] : null;
+        return { low, high, ccy };
+      };
 
-        // --- Calculate Daily High End ---
-        const dailyHigh = 
-          (parseInt(costRange[1], 10) || parseInt(costRange[0], 10) || 0) + 
-          (parseInt(hotelCostRange[1], 10) || parseInt(hotelCostRange[0], 10) || 0);
-        totalCostHigh += dailyHigh;
-      });
-    } catch (calcError) {
-      console.error("Error calculating total cost:", calcError);
-      totalCostLow = 0;
-      totalCostHigh = 0;
-      currency = 'Error';
-    }
+      const dayCost = extractCost(costString);
+      const hotelCost = extractCost(hotelCostString);
 
-    const totalCostString = totalCostLow === totalCostHigh 
-      ? `${totalCostLow} ${currency}` 
-      : `${totalCostLow}-${totalCostHigh} ${currency}`;
+      if (dayCost.ccy) currency = dayCost.ccy;
+      else if (hotelCost.ccy) currency = hotelCost.ccy;
 
-    // Send itinerary and total cost to the frontend
-    res.json({
-      itinerary: itineraryData,
-      totalCost: totalCostString
+      if (!firstCurrency && currency) firstCurrency = currency;
+      if (currency && firstCurrency && currency !== firstCurrency) allCurrenciesSame = false;
+
+      totalCostLow += dayCost.low + hotelCost.low;
+      totalCostHigh += dayCost.high + hotelCost.high;
     });
 
-  } catch (error) {
-    console.error('Error calling Groq API:', error);
-    let errorMessage = 'Failed to generate itinerary. Please try again.';
-    
-    if (error.status === 400) {
-      errorMessage = 'The AI model failed to generate a valid response. Please try again.';
-    } else if (error.status === 401) {
-      errorMessage = 'Invalid API Key. Please check your .env file.';
+    let totalCost;
+    if (allCurrenciesSame) {
+      totalCost = `${totalCostLow.toLocaleString()}-${totalCostHigh.toLocaleString()} ${firstCurrency || ''}`;
+    } else {
+      totalCost = "Multiple currencies detected. Check daily totals.";
     }
+    // --------------------------------
 
-    res.status(500).json({ error: errorMessage });
+    res.json({ itinerary, totalCost });
+  } catch (err) {
+    console.error('Error calling Groq API:', err);
+    res.status(500).json({ error: err.message || "An internal server error occurred" });
   }
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
