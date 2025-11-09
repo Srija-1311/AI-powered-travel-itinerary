@@ -1,41 +1,31 @@
-import { useState } from 'react';
-// --- NEW: Added 'Home' icon ---
-import { Plane, MapPin, Calendar, Users, Sprout, WandSparkles, Share, Edit, Download, Save, Copy, Building,Utensils,Ticket,Palette,TreePine,Sun,Music,PartyPopper, DollarSign, Home } from 'lucide-react';
-// --- NEW: Import charting components ---
+import { useState, useEffect } from 'react';
+// --- NEW: Added icons for navigation, steps, and the new theme ---
+import { 
+  Plane, MapPin, Calendar, Users, Sprout, WandSparkles, Share, Edit, Download, Save, Copy, 
+  Building, Utensils, Ticket, Palette, TreePine, Sun, Music, PartyPopper, DollarSign, Home, 
+  ArrowLeft, ArrowRight, Wallet, Mountain, BookOpen, Wind, Loader, BrainCircuit, SearchX 
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-
-// --- Reusable Input Component ---
+// --- Reusable Input Component (No changes) ---
 const InputField = ({ icon, label, as: Component = 'input', ...props }) => {
   const isSelect = Component === 'select';
-  
-  // Base classes
-  let commonClasses = "w-full py-2 bg-white bg-opacity-70 border border-cyan-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition ";
-  
-  // Classes for icon padding
-  commonClasses += "pl-10 ";
-  
-  // Classes specific to <input> or <select>
+  let commonClasses = "w-full py-3 bg-white bg-opacity-70 border border-indigo-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition pl-10 ";
   if (isSelect) {
-    commonClasses += "pr-10 appearance-none"; // Padding for arrow
+    commonClasses += "pr-10 appearance-none";
   } else {
     commonClasses += "pr-3";
   }
-
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-cyan-800 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-indigo-800 mb-1">{label}</label>
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-cyan-600">
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-indigo-500">
           {icon}
         </div>
-        <Component
-          {...props}
-          className={commonClasses}
-        />
-        {/* Add dropdown arrow for select */}
+        <Component {...props} className={commonClasses} />
         {isSelect && (
-          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-cyan-600">
+          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-indigo-500">
             <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
           </div>
         )}
@@ -46,37 +36,56 @@ const InputField = ({ icon, label, as: Component = 'input', ...props }) => {
 
 // --- Reusable Checkbox Component ---
 const InterestCheckbox = ({ label, icon, checked, onChange }) => (
-  <label className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition ${checked ? 'bg-cyan-600 text-white shadow-md' : 'bg-white bg-opacity-70 hover:bg-cyan-50'}`}>
+  <label className={`flex flex-col items-center justify-center space-y-2 p-4 rounded-lg cursor-pointer transition-all duration-200 border-2 ${checked ? 'bg-indigo-600 text-white border-indigo-700 shadow-lg' : 'bg-white bg-opacity-70 border-indigo-200 hover:bg-indigo-50'}`}>
     {icon}
-    <span className="text-sm font-medium">{label}</span>
+    <span className="text-sm font-medium text-center">{label}</span>
     <input type="checkbox" className="hidden" checked={checked} onChange={onChange} />
   </label>
 );
 
-// --- NEW --- Helper function to get an icon based on activity type
+// --- Activity Icon Component (No changes) ---
 const ActivityIcon = ({ type }) => {
   switch (type?.toLowerCase()) {
-    case 'historic site':
-      return <Building size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
-    case 'food tour':
-      return <Utensils size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
-    case 'museum':
-      return <Palette size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
-    case 'hiking':
-    case 'national park':
-      return <TreePine size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
-    case 'beach':
-      return <Sun size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
-    case 'nightlife':
-      return <PartyPopper size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
-    default:
-      return <Ticket size={16} className="mr-2 text-cyan-600 flex-shrink-0" />;
+    case 'historic site': return <Building size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
+    case 'food tour': return <Utensils size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
+    case 'museum': return <Palette size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
+    case 'hiking': case 'national park': return <TreePine size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
+    case 'beach': return <Sun size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
+    case 'nightlife': return <PartyPopper size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
+    default: return <Ticket size={16} className="mr-2 text-indigo-600 flex-shrink-0" />;
   }
+};
+
+// --- Loading Component (NEW) ---
+// This component encapsulates the hooks for the loading message,
+// fixing the "Rules of Hooks" violation.
+const LoadingScreen = () => {
+  const messages = ["Finding the best spots...", "Packing your virtual bags...", "Checking passport...", "Crafting your adventure...", "Asking the AI..."];
+  const [message, setMessage] = useState(messages[0]);
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % messages.length;
+      setMessage(messages[index]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []); // Empty dependency array is correct here
+
+  return (
+    <div className="flex flex-col items-center justify-center h-screen text-indigo-800">
+      <Loader size={60} className="animate-spin mb-6" />
+      <h2 className="text-3xl font-bold mb-4">Just a moment...</h2>
+      <p className="text-lg text-indigo-700 transition-opacity duration-300">{message}</p>
+    </div>
+  );
 };
 
 // --- Main App Component ---
 function App() {
-  // --- State Definitions ---
+  // --- STATE ---
+  const [uiState, setUiState] = useState('form'); // 'form', 'loading', 'results', 'error'
+  const [formStep, setFormStep] = useState(1); // For wizard
   const [formData, setFormData] = useState({
     destination: '',
     days: 3,
@@ -85,14 +94,14 @@ function App() {
     interests: [],
   });
   const [itinerary, setItinerary] = useState(null);
-  const [totalCost, setTotalCost] = useState(null); // --- NEW STATE ---
-  const [chartData, setChartData] = useState([]); // --- NEW: State for chart data ---
-  const [isLoading, setIsLoading] = useState(false);
+  const [totalCost, setTotalCost] = useState(null);
+  const [chartData, setChartData] = useState([]);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeDay, setActiveDay] = useState('Day 1'); // For results tabs
 
-  // --- Form Input Handlers ---
+  // --- FORM HANDLERS ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -106,181 +115,132 @@ function App() {
         : [...prev.interests, interest],
     }));
   };
+  
+  const nextStep = () => setFormStep(s => s + 1);
+  const prevStep = () => setFormStep(s => s - 1);
+  
+  const handleNewPlan = () => {
+    setUiState('form');
+    setItinerary(null);
+    setTotalCost(null);
+    setChartData([]);
+    setFormStep(1);
+    setError(null);
+  };
 
-  // --- NEW --- Handler for editing the itinerary textareas
+  // --- ITINERARY EDIT HANDLERS (No changes) ---
   const handleItineraryChange = (dayKey, period, field, value) => {
-    // This needs to be updated for the new nested structure
+    setItinerary(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [period]: { ...prev[dayKey][period], [field]: value }}}));
+  };
+  const handleCostChange = (dayKey, value) => {
+    setItinerary(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], "Estimated Cost": value }}));
+  };
+  // --- NEW: Edit handler for Hotel Cost ---
+  const handleHotelCostChange = (dayKey, value) => {
     setItinerary(prev => ({
       ...prev,
       [dayKey]: {
         ...prev[dayKey],
-        [period]: {
-          ...prev[dayKey][period],
-          [field]: value
+        Hotel: {
+          ...prev[dayKey].Hotel,
+          Cost: value
         }
       }
     }));
   };
 
-  // --- NEW --- Handler for editing simple fields like Estimated Cost
-  const handleCostChange = (dayKey, value) => {
-    setItinerary(prev => ({
-      ...prev,
-      [dayKey]: {
-        ...prev[dayKey],
-        "Estimated Cost": value
-      }
-    }));
-  };
 
-
-  // --- NEW --- Handler for the Share Button (Copy to Clipboard)
+  // --- PDF, SHARE, COPY HANDLERS (No changes from previous) ---
   const handleShare = () => {
     if (!itinerary) return;
-
-    // Create a string representation of the itinerary
-    let itineraryText = `My Trip to ${formData.destination}\n\n`;
-    if (totalCost) {
-      itineraryText += `Total Estimated Cost: ${totalCost}\n\n`;
-    }
+    let itineraryText = `My Trip to ${formData.destination}\n\nTotal Estimated Cost: ${totalCost}\n\n`;
     Object.keys(itinerary).forEach(dayKey => {
       const day = itinerary[dayKey];
       itineraryText += `${dayKey}:\n`;
-      // --- UPDATED for new data structure ---
       itineraryText += `  - Morning: ${day.Morning.Activity} (${day.Morning.Notes})\n`;
       itineraryText += `  - Lunch: ${day.Lunch.Restaurant} (${day.Lunch.Cuisine})\n`;
       itineraryText += `  - Afternoon: ${day.Afternoon.Activity} (${day.Afternoon.Notes})\n`;
       itineraryText += `  - Dinner: ${day.Dinner.Restaurant} (${day.Dinner.Cuisine})\n`;
-      // --- UPDATED: Add Hotel Cost ---
       itineraryText += `  - Hotel: ${day.Hotel.Name} (${day.Hotel.Type}) - Cost: ${day.Hotel.Cost}\n`;
       itineraryText += `  - Food & Activities Cost: ${day["Estimated Cost"]}\n\n`;
     });
-
-    // Use document.execCommand for broader compatibility as per instructions
     const textArea = document.createElement("textarea");
     textArea.value = itineraryText;
-    textArea.style.position = "fixed"; // Avoid scrolling
-    textArea.style.top = "-9999px";
-    textArea.style.left = "-9999px";
-    textArea.style.opacity = 0;
+    textArea.style.position = "fixed"; textArea.style.opacity = 0;
     document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-
+    textArea.focus(); textArea.select();
     try {
       document.execCommand('copy');
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Show "Copied!" for 2 seconds
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
-
     document.body.removeChild(textArea);
   };
 
-  // --- NEW --- Handler for the Download PDF Button
   const handleDownloadPDF = () => {
     if (!itinerary) return;
-
-    // --- FIX --- Dynamically load jsPDF from CDN to avoid build error
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    
     script.onload = () => {
-      // --- jsPDF is loaded, now we can use it ---
-      const { jsPDF } = window.jspdf; // Get jsPDF from window object
+      const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      let yPos = 20; // Initial Y position
+      let yPos = 20;
       const pageHeight = doc.internal.pageSize.height;
       const margin = 20;
       const contentWidth = doc.internal.pageSize.width - margin * 2;
-
-      // --- Add Title ---
       doc.setFontSize(22);
       doc.setFont("helvetica", "bold");
       doc.text(`Your Trip to ${formData.destination}`, doc.internal.pageSize.width / 2, yPos, { align: 'center' });
       yPos += 15;
-
-      // --- NEW: Add Total Cost ---
       if (totalCost) {
         doc.setFontSize(16);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(60, 60, 60); // Dark gray
+        doc.setTextColor(60, 60, 60);
         doc.text(`Total Estimated Cost: ${totalCost}`, doc.internal.pageSize.width / 2, yPos, { align: 'center' });
         yPos += 15;
       }
-
-      // --- Loop Through Itinerary Days ---
       Object.keys(itinerary).forEach((dayKey) => {
         const day = itinerary[dayKey];
-        
-        // Check if we need a new page
-        if (yPos > pageHeight - margin * 2) { // rough estimate for a day block
-          doc.addPage();
-          yPos = margin;
-        }
-
-        // Day Title
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 102, 102); // Teal color
+        if (yPos > pageHeight - margin * 2) { doc.addPage(); yPos = margin; }
+        doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.setTextColor(48, 25, 52); // Indigo
         doc.text(dayKey, margin, yPos);
         yPos += 10;
-
-        // Day Details
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(0, 0, 0); // Black
-        
-        // --- UPDATED for new data structure ---
+        doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
         const dayDetails = [
           `Morning: ${day.Morning.Activity} - ${day.Morning.Notes}`,
           `Lunch: ${day.Lunch.Restaurant} - ${day.Lunch.Cuisine} (${day.Lunch["Price Range"]})`,
           `Afternoon: ${day.Afternoon.Activity} - ${day.Afternoon.Notes}`,
           `Dinner: ${day.Dinner.Restaurant} - ${day.Dinner.Cuisine} (${day.Dinner["Price Range"]})`,
-          // --- UPDATED: Add Hotel Cost ---
           `Hotel: ${day.Hotel.Name} - ${day.Hotel.Type} (${day.Hotel.Cost})`,
           `Food & Activities Cost: ${day["Estimated Cost"]}`
         ];
-
         dayDetails.forEach(detail => {
-          // Split long text to fit content width
-          const splitText = doc.splitTextToSize(detail, contentWidth - 5); // -5 for indent
-          
-          // Check for page break *before* printing text
-          if (yPos + (splitText.length * 7) > pageHeight - margin) {
-              doc.addPage();
-              yPos = margin;
-          }
-
+          const splitText = doc.splitTextToSize(detail, contentWidth - 5);
+          if (yPos + (splitText.length * 7) > pageHeight - margin) { doc.addPage(); yPos = margin; }
           doc.text(splitText, margin + 5, yPos);
-          yPos += (splitText.length * 7) + 3; // Adjust Y pos based on lines + padding
+          yPos += (splitText.length * 7) + 3;
         });
-        yPos += 10; // Extra space between days
+        yPos += 10;
       });
-
-      // --- Save the PDF ---
       doc.save('travel-itinerary.pdf');
     };
-    
     script.onerror = () => {
-      // Handle error if script fails to load
       console.error('Failed to load jsPDF library.');
       setError('Could not download PDF. Please try again later.');
     };
-    
     document.body.appendChild(script);
   };
 
-
   // --- API Call ---
   const handleGenerateItinerary = async () => {
-    setIsLoading(true);
+    setUiState('loading'); // <-- NEW: Set loading state
     setError(null);
     setItinerary(null);
-    setTotalCost(null); // --- NEW: Reset total cost ---
-    setChartData([]); // --- NEW: Reset chart data ---
-    setIsEditing(false); // Reset edit mode on new generation
+    setTotalCost(null);
+    setChartData([]);
+    setIsEditing(false);
 
     try {
       const response = await fetch('http://localhost:3001/api/generate-itinerary', {
@@ -295,23 +255,19 @@ function App() {
       }
 
       const data = await response.json();
-      // --- NEW: Set both itinerary and total cost ---
       setItinerary(data.itinerary);
       setTotalCost(data.totalCost);
+      setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1'); // Set first day as active
 
-      // --- NEW: Process data for chart ---
+      // --- Chart Data Processing (with comma fix) ---
       const processedChartData = Object.keys(data.itinerary).map(dayKey => {
         const day = data.itinerary[dayKey];
+        // --- FIX: Remove commas before parsing ---
+        const costString = day["Estimated Cost"]?.toString().replace(/,/g, '') || "0 USD";
+        const costParts = costString.split(' ')[0].split('-');
+        const hotelCostString = day.Hotel?.Cost?.toString().replace(/,/g, '') || "0 USD";
+        const hotelCostParts = hotelCostString.split(' ')[0].split('-');
         
-        // --- UPDATED: Calculate total daily cost for chart (Hotel + Activities) ---
-        const costString = day["Estimated Cost"] || "0 USD";
-        // --- FIX: Remove commas before splitting/parsing ---
-        const costParts = costString.split(' ')[0].replace(/,/g, '').split('-');
-        
-        const hotelCostString = day.Hotel?.Cost || "0 USD";
-        // --- FIX: Remove commas before splitting/parsing ---
-        const hotelCostParts = hotelCostString.split(' ')[0].replace(/,/g, '').split('-');
-
         let avgCost = 0;
         let avgHotelCost = 0;
 
@@ -326,393 +282,360 @@ function App() {
         } else if (hotelCostParts.length === 1) {
           avgHotelCost = parseInt(hotelCostParts[0], 10);
         }
-
-        const totalDailyCost = (isNaN(avgCost) ? 0 : avgCost) + (isNaN(avgHotelCost) ? 0 : avgHotelCost);
         
-        return {
-          name: dayKey.replace(' ', ''), // "Day 1" -> "Day1"
-          Cost: totalDailyCost,
-        };
+        const totalDailyCost = (isNaN(avgCost) ? 0 : avgCost) + (isNaN(avgHotelCost) ? 0 : avgHotelCost);
+        return { name: dayKey.replace(' ', ''), Cost: totalDailyCost };
       });
-      setChartData(processedChartData); // Set the new state
+      
+      setChartData(processedChartData);
+      setUiState('results'); // <-- NEW: Switch to results view
 
     } catch (err) {
       setError(err.message);
-    } finally {
-      setIsLoading(false);
+      setUiState('error'); // <-- NEW: Go to error view
     }
   };
-
-  // --- Interest Options Array ---
+  
+  // --- Interest Options Array (New Icons) ---
   const interestOptions = [
-    { label: 'Food', icon: <Sprout size={16} /> },
-    { label: 'Adventure', icon: <MapPin size={16} /> },
-    { label: 'Relaxation', icon: <Plane size={16} /> },
-    { label: 'Culture', icon: <Users size={16} /> },
-    { label: 'History', icon: <Calendar size={16} /> },
-    { label: 'Nightlife', icon: <Music size={16} /> }, // Changed icon
+    { label: 'Food', icon: <Utensils size={24} /> },
+    { label: 'Adventure', icon: <Mountain size={24} /> },
+    { label: 'Relaxation', icon: <Wind size={24} /> },
+    { label: 'Culture', icon: <BookOpen size={24} /> },
+    { label: 'History', icon: <Building size={24} /> },
+    { label: 'Nightlife', icon: <PartyPopper size={24} /> },
   ];
 
-  // --- Render ---
+  // --- RENDER FUNCTIONS ---
+
+  const renderForm = () => (
+    <div className="max-w-xl mx-auto w-full">
+      <header className="text-center mb-8">
+        <h1 className="text-4xl md:text-5xl font-bold text-indigo-800 flex items-center justify-center space-x-3">
+          <Plane size={40} className="transform -rotate-45" />
+          <span>AI Travel Planner</span>
+        </h1>
+        <p className="text-lg text-indigo-700 mt-2">Your personal trip curator, powered by AI.</p>
+      </header>
+
+      <div className="bg-white bg-opacity-70 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-xl border border-indigo-200">
+        {/* Step Indicator */}
+        <div className="flex justify-center items-center mb-6">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formStep >= 1 ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-400'}`}>1</div>
+          <div className={`w-1/4 h-1 ${formStep >= 2 ? 'bg-indigo-600' : 'bg-indigo-100'}`}></div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formStep >= 2 ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-400'}`}>2</div>
+          <div className={`w-1/4 h-1 ${formStep >= 3 ? 'bg-indigo-600' : 'bg-indigo-100'}`}></div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formStep >= 3 ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-400'}`}>3</div>
+        </div>
+
+        {/* Step 1: Destination & Days */}
+        {formStep === 1 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-indigo-800 text-center">Where & When?</h3>
+            <InputField
+              icon={<MapPin size={16} />}
+              label="Destination"
+              type="text"
+              name="destination"
+              value={formData.destination}
+              onChange={handleChange}
+              placeholder="e.g., Tokyo, Japan"
+            />
+            <InputField
+              icon={<Calendar size={16} />}
+              label="Number of Days"
+              type="number"
+              name="days"
+              value={formData.days}
+              onChange={handleChange}
+              min="1" max="14"
+            />
+            <button onClick={nextStep} disabled={!formData.destination} className="w-full bg-indigo-600 text-white py-3 rounded-lg text-lg font-semibold shadow-lg hover:bg-indigo-700 transition transform hover:-translate-y-0.5 disabled:bg-gray-400 flex items-center justify-center">
+              Next <ArrowRight size={20} className="ml-2" />
+            </button>
+          </div>
+        )}
+        
+        {/* Step 2: Budget & Type */}
+        {formStep === 2 && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-indigo-800 text-center">Your Travel Style</h3>
+            <div>
+              <label className="block text-sm font-medium text-indigo-800 mb-2">Budget</label>
+              <div className="flex justify-center space-x-2 md:space-x-4">
+                {['Budget', 'Mid-range', 'Luxury'].map(budget => (
+                  <label key={budget} className={`flex-1 text-center p-3 rounded-lg cursor-pointer transition ${formData.budget === budget ? 'bg-indigo-600 text-white shadow-md' : 'bg-white bg-opacity-70 hover:bg-indigo-50'}`}>
+                    <input type="radio" name="budget" value={budget} checked={formData.budget === budget} onChange={handleChange} className="hidden" />
+                    <span className="text-sm font-medium">{budget}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <InputField
+              icon={<Users size={16} />}
+              label="Travel Type"
+              as="select"
+              name="travelType"
+              value={formData.travelType}
+              onChange={handleChange}
+            >
+              <option>Solo</option>
+              <option>Couple</option>
+              <option>Family</option>
+              <option>Friends</option>
+            </InputField>
+            <div className="flex justify-between space-x-4">
+              <button onClick={prevStep} className="w-1/2 bg-gray-300 text-gray-700 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 transition flex items-center justify-center">
+                <ArrowLeft size={20} className="mr-2" /> Back
+              </button>
+              <button onClick={nextStep} className="w-1/2 bg-indigo-600 text-white py-3 rounded-lg text-lg font-semibold shadow-lg hover:bg-indigo-700 transition transform hover:-translate-y-0.5 flex items-center justify-center">
+                Next <ArrowRight size={20} className="ml-2" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Interests */}
+        {formStep === 3 && (
+          <div className="space-y-6">
+            <h3 className="text-xl font-semibold text-indigo-800 text-center">What do you love?</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {interestOptions.map(opt => (
+                <InterestCheckbox
+                  key={opt.label}
+                  label={opt.label}
+                  icon={opt.icon}
+                  checked={formData.interests.includes(opt.label)}
+                  onChange={() => handleInterestChange(opt.label)}
+                />
+              ))}
+            </div>
+            <div className="flex justify-between space-x-4">
+              <button onClick={prevStep} className="w-1/2 bg-gray-300 text-gray-700 py-3 rounded-lg text-lg font-semibold hover:bg-gray-400 transition flex items-center justify-center">
+                <ArrowLeft size={20} className="mr-2" /> Back
+              </button>
+              <button onClick={handleGenerateItinerary} className="w-1/2 bg-green-600 text-white py-3 rounded-lg text-lg font-semibold shadow-lg hover:bg-green-700 transition transform hover:-translate-y-0.5 flex items-center justify-center">
+                <WandSparkles size={20} className="mr-2" /> Generate
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+  
+  const renderError = () => (
+    <div className="max-w-xl mx-auto w-full text-center">
+      <SearchX size={80} className="text-red-500 mx-auto mb-4" />
+      <h2 className="text-3xl font-bold text-red-700 mb-4">Oops! Something went wrong.</h2>
+      <p className="text-lg text-red-600 mb-6">{error || "Failed to generate your itinerary. Please try again."}</p>
+      <button onClick={handleNewPlan} className="bg-indigo-600 text-white py-3 px-6 rounded-lg text-lg font-semibold shadow-lg hover:bg-indigo-700 transition">
+        Try Again
+      </button>
+    </div>
+  );
+
+  const renderResults = () => {
+    if (!itinerary) return renderError(); // Safety check
+    
+    // --- FIX: Add a null check for itinerary[activeDay] ---
+    const day = itinerary[activeDay];
+    if (!day) {
+      // Handle case where activeDay might not exist (e.g., data mismatch)
+      // Fallback to first day
+      const firstDayKey = Object.keys(itinerary)[0];
+      if (firstDayKey) {
+        setActiveDay(firstDayKey);
+        return null; // Will re-render with correct day
+      }
+      return renderError(); // No days found at all
+    }
+    
+    return (
+      <div className="max-w-4xl mx-auto w-full">
+        {/* --- Header Bar --- */}
+        <div className="flex justify-between items-center mb-6">
+          <button onClick={handleNewPlan} className="flex items-center text-indigo-600 font-semibold p-2 hover:bg-indigo-100 rounded-lg transition">
+            <ArrowLeft size={20} className="mr-1" /> New Plan
+          </button>
+          <div className="flex space-x-2 text-indigo-600">
+            <button onClick={handleShare} title="Copy to Clipboard" className="p-2 hover:bg-indigo-100 rounded-full transition"><Share size={20} /></button>
+            <button onClick={() => setIsEditing(!isEditing)} title={isEditing ? "Save" : "Edit"} className="p-2 hover:bg-indigo-100 rounded-full transition">
+              {isEditing ? <Save size={20} /> : <Edit size={20} />}
+            </button>
+            <button onClick={handleDownloadPDF} title="Download PDF" className="p-2 hover:bg-indigo-100 rounded-full transition"><Download size={20} /></button>
+          </div>
+        </div>
+
+        {/* --- Title --- */}
+        <h2 className="text-3xl font-bold text-indigo-800 mb-4">Your Trip to {formData.destination}</h2>
+
+        {/* --- Total Cost Card --- */}
+        {totalCost && (
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 p-4 rounded-lg mb-6 flex items-center justify-center shadow-inner">
+            <Wallet className="text-indigo-600 mr-3" size={28} />
+            <div>
+              <p className="text-sm font-medium text-indigo-700">Total Estimated Cost</p>
+              <p className="text-2xl font-bold text-indigo-800">{totalCost}</p>
+            </div>
+          </div>
+        )}
+
+        {/* --- Day Tabs --- */}
+        <div className="flex space-x-2 overflow-x-auto pb-2 mb-6">
+          {Object.keys(itinerary).map(dayKey => (
+            <button
+              key={dayKey}
+              onClick={() => {
+                setActiveDay(dayKey);
+                setIsEditing(false); // Exit edit mode when changing day
+              }}
+              className={`py-2 px-4 rounded-lg font-semibold transition-all duration-200 flex-shrink-0 ${activeDay === dayKey ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white bg-opacity-70 text-indigo-700 hover:bg-indigo-100'}`}
+            >
+              {dayKey}
+            </button>
+          ))}
+        </div>
+
+        {/* --- Itinerary Content for Active Day --- */}
+        <div className="bg-white bg-opacity-70 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-indigo-200">
+          <div className="space-y-5">
+            {/* Morning */}
+            <div className="flex">
+              <ActivityIcon type={day.Morning.Type} />
+              <div className="flex-1">
+                <span className="font-semibold text-indigo-800">Morning</span>
+                {isEditing ? (
+                  <div className="mt-1 space-y-1">
+                    <input type="text" value={day.Morning.Activity} onChange={(e) => handleItineraryChange(activeDay, 'Morning', 'Activity', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                    <textarea value={day.Morning.Notes} onChange={(e) => handleItineraryChange(activeDay, 'Morning', 'Notes', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" rows={2} />
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-medium text-indigo-900">{day.Morning.Activity}</p>
+                    <p className="text-sm text-indigo-700">{day.Morning.Notes}</p>
+                  </>
+                )}
+              </div>
+            </div>
+            {/* Lunch */}
+            <div className="flex">
+              <Utensils size={16} className="mr-2 text-indigo-600 flex-shrink-0" />
+              <div className="flex-1">
+                <span className="font-semibold text-indigo-800">Lunch</span>
+                {isEditing ? (
+                  <div className="mt-1 space-y-1">
+                    <input type="text" value={day.Lunch.Restaurant} onChange={(e) => handleItineraryChange(activeDay, 'Lunch', 'Restaurant', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                    <input type="text" value={day.Lunch.Cuisine} onChange={(e) => handleItineraryChange(activeDay, 'Lunch', 'Cuisine', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                  </div>
+                ) : (
+                  <p className="text-indigo-900">{day.Lunch.Restaurant} <span className="text-sm text-indigo-700">({day.Lunch.Cuisine} - {day.Lunch["Price Range"]})</span></p>
+                )}
+              </div>
+            </div>
+            {/* Afternoon */}
+            <div className="flex">
+              <ActivityIcon type={day.Afternoon.Type} />
+              <div className="flex-1">
+                <span className="font-semibold text-indigo-800">Afternoon</span>
+                {isEditing ? (
+                  <div className="mt-1 space-y-1">
+                    <input type="text" value={day.Afternoon.Activity} onChange={(e) => handleItineraryChange(activeDay, 'Afternoon', 'Activity', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                    <textarea value={day.Afternoon.Notes} onChange={(e) => handleItineraryChange(activeDay, 'Afternoon', 'Notes', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" rows={2} />
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-medium text-indigo-900">{day.Afternoon.Activity}</p>
+                    <p className="text-sm text-indigo-700">{day.Afternoon.Notes}</p>
+                  </>
+                )}
+              </div>
+            </div>
+            {/* Dinner */}
+            <div className="flex">
+              <Utensils size={16} className="mr-2 text-indigo-600 flex-shrink-0" />
+              <div className="flex-1">
+                <span className="font-semibold text-indigo-800">Dinner</span>
+                {isEditing ? (
+                  <div className="mt-1 space-y-1">
+                    <input type="text" value={day.Dinner.Restaurant} onChange={(e) => handleItineraryChange(activeDay, 'Dinner', 'Restaurant', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                    {/* --- FIX: The truncated line is now complete --- */}
+                    <input type="text" value={day.Dinner.Cuisine} onChange={(e) => handleItineraryChange(activeDay, 'Dinner', 'Cuisine', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                  </div>
+                ) : (
+                  <p className="text-indigo-900">{day.Dinner.Restaurant} <span className="text-sm text-indigo-700">({day.Dinner.Cuisine} - {day.Dinner["Price Range"]})</span></p>
+                )}
+              </div>
+            </div>
+            {/* Hotel */}
+            <div className="flex">
+              <Home size={16} className="mr-2 text-indigo-600 flex-shrink-0" />
+              <div className="flex-1">
+                <span className="font-semibold text-indigo-800">Hotel / Stay</span>
+                {isEditing ? (
+                  <div className="mt-1 space-y-1">
+                    <input type="text" value={day.Hotel.Name} onChange={(e) => handleItineraryChange(activeDay, 'Hotel', 'Name', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                    <input type="text" value={day.Hotel.Type} onChange={(e) => handleItineraryChange(activeDay, 'Hotel', 'Type', e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                    {/* --- FIX: Added handler for Hotel Cost edit --- */}
+                    <input type="text" value={day.Hotel.Cost} onChange={(e) => handleHotelCostChange(activeDay, e.target.value)} className="w-full p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-indigo-900">{day.Hotel.Name} <span className="text-sm text-indigo-700">({day.Hotel.Type})</span></p>
+                    <p className="text-sm text-indigo-700 font-medium">Cost: {day.Hotel.Cost}</p>
+                  </>
+                )}
+              </div>
+            </div>
+            {/* Costs */}
+            <div className="flex items-center pt-2">
+              <DollarSign size={16} className="mr-2 text-indigo-600 flex-shrink-0" />
+              <span className="font-semibold text-indigo-800">Food & Activities Cost:</span>
+              {isEditing ? (
+                <input type="text" value={day["Estimated Cost"]} onChange={(e) => handleCostChange(activeDay, e.target.value)} className="w-1-2 ml-2 p-1 border border-indigo-300 rounded-md bg-indigo-50" />
+              ) : (
+                <p className="ml-2 font-medium text-indigo-900">{day["Estimated Cost"]}</p>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* --- Chart --- */}
+        {chartData.length > 0 && (
+          <div className="mt-8 bg-white bg-opacity-70 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-indigo-200">
+            <h4 className="text-xl font-semibold text-indigo-800 mb-4 text-center">Daily Cost Breakdown (Hotel + Activities)</h4>
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                  <XAxis dataKey="name" stroke="#3730a3" />
+                  <YAxis stroke="#3T30a3" />
+                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 2S5, 0.9)', borderRadius: '8px', borderColor: '#4f46e5' }} labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} />
+                  <Legend />
+                  <Bar dataKey="Cost" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // --- Main Render Logic ---
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-cyan-100 to-teal-200 text-cyan-900 font-inter p-4 md:p-8">
-      {/* --- Copied to Clipboard Toast --- */}
+    <div className="min-h-screen w-full bg-gradient-to-br from-indigo-100 via-purple-100 to-indigo-200 text-indigo-900 font-inter p-4 md:p-8 flex items-center justify-center">
+      {/* Toast */}
       {copied && (
         <div className="fixed top-5 right-5 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
           Copied to clipboard!
         </div>
       )}
 
-      {/* --- Header --- */}
-      <header className="text-center mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-cyan-800 flex items-center justify-center space-x-3">
-          <Plane size={40} className="transform -rotate-45" />
-          <span>AI Travel Planner</span>
-        </h1>
-        <p className="text-lg text-cyan-700 mt-2">Your personal trip curator, powered by AI.</p>
-      </header>
-
-      {/* --- Form Card --- */}
-      <div className="max-w-4xl mx-auto bg-white bg-opacity-60 backdrop-blur-sm p-6 md:p-8 rounded-2xl shadow-xl border border-cyan-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <InputField
-            icon={<MapPin size={16} />}
-            label="Destination"
-            type="text"
-            name="destination"
-            value={formData.destination}
-            onChange={handleChange}
-            placeholder="e.g., Paris, Tokyo"
-          />
-          <InputField
-            icon={<Calendar size={16} />}
-            label="Number of Days"
-            type="number"
-            name="days"
-            value={formData.days}
-            onChange={handleChange}
-            min="1"
-            max="14"
-          />
-          <InputField
-            icon={<Users size={16} />}
-            label="Travel Type"
-            as="select"
-            name="travelType"
-            value={formData.travelType}
-            onChange={handleChange}
-          >
-            <option>Solo</option>
-            <option>Couple</option>
-            <option>Family</option>
-            <option>Friends</option>
-          </InputField>
-        </div>
-
-        <div className="mt-6">
-          <label className="block text-sm font-medium text-cyan-800 mb-2">Budget</label>
-          <div className="flex justify-center space-x-2 md:space-x-4">
-            {['Budget ($)', 'Mid-range ($$)', 'Luxury ($$$)'].map(budget => (
-              <label key={budget} className={`flex-1 text-center p-3 rounded-lg cursor-pointer transition ${formData.budget === budget.split(' ')[0] ? 'bg-cyan-600 text-white shadow-md' : 'bg-white bg-opacity-70 hover:bg-cyan-50'}`}>
-                <input
-                  type="radio"
-                  name="budget"
-                  value={budget.split(' ')[0]}
-                  checked={formData.budget === budget.split(' ')[0]}
-                  onChange={handleChange}
-                  className="hidden"
-                />
-                <span className="text-sm font-medium">{budget}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <label className="block text-sm font-medium text-cyan-800 mb-2">Interests</label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            {interestOptions.map(opt => (
-              <InterestCheckbox
-                key={opt.label}
-                label={opt.label}
-                icon={opt.icon}
-                checked={formData.interests.includes(opt.label)}
-                onChange={() => handleInterestChange(opt.label)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <button
-          onClick={handleGenerateItinerary}
-          disabled={isLoading}
-          className="mt-8 w-full bg-cyan-600 text-white py-3 px-6 rounded-lg text-lg font-semibold shadow-lg hover:bg-cyan-700 transition transform hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-        >
-          {isLoading ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-          ) : (
-            <WandSparkles size={20} className="mr-2" />
-          )}
-          {isLoading ? 'Conjuring your adventure...' : 'Generate Itinerary'}
-        </button>
-      </div>
-
-      {/* --- Results Section --- */}
-      {error && (
-        <div className="max-w-4xl mx-auto mt-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg shadow">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {itinerary && (
-        <div className="max-w-4xl mx-auto mt-8 bg-white p-6 md:p-8 rounded-2xl shadow-xl">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
-            <h2 className="text-3xl font-bold text-cyan-800 mb-2 sm:mb-0">Your Trip Itinerary</h2>
-            {/* --- NEW --- Functional Icons --- */}
-            <div className="flex space-x-3 text-cyan-600">
-              <button onClick={handleShare} title="Copy to Clipboard" className="p-2 hover:bg-cyan-100 rounded-full transition">
-                <Share size={20} />
-              </button>
-              <button onClick={() => setIsEditing(!isEditing)} title={isEditing ? "Save Changes" : "Edit Itinerary"} className="p-2 hover:bg-cyan-100 rounded-full transition">
-                {isEditing ? <Save size={20} /> : <Edit size={20} />}
-              </button>
-              <button onClick={handleDownloadPDF} title="Download as PDF" className="p-2 hover:bg-cyan-100 rounded-full transition">
-                <Download size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* --- NEW: TOTAL COST DISPLAY --- */}
-          {totalCost && (
-            <div className="bg-gradient-to-r from-cyan-50 to-teal-50 border border-teal-200 p-4 rounded-lg mb-6 flex items-center justify-center shadow-inner">
-              <DollarSign className="text-teal-600 mr-3" size={28} />
-              <div>
-                <p className="text-sm font-medium text-teal-700">Total Estimated Cost</p>
-                <p className="text-2xl font-bold text-teal-800">{totalCost}</p>
-              </div>
-            </div>
-          )}
-          
-          {/* --- NEW: COST VISUALIZATION --- */}
-          {chartData.length > 0 && (
-            <div className="mt-6 mb-6">
-              <h4 className="text-xl font-semibold text-cyan-800 mb-3 text-center">Daily Cost Breakdown (Hotel + Activities)</h4>
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData}
-                    margin={{
-                      top: 5, right: 30, left: 20, bottom: 5,
-                    }}
-                  >
-                    <XAxis dataKey="name" stroke="#083344" />
-                    <YAxis stroke="#083344" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: '8px', borderColor: '#0e7490' }}
-                      labelStyle={{ color: '#0e7490', fontWeight: 'bold' }}
-                    />
-                    <Legend />
-                    <Bar dataKey="Cost" fill="#0d9488" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-          
-          {/* --- !!! NEW DISPLAY LOGIC !!! --- */}
-          <div className="space-y-6">
-            {Object.keys(itinerary).map(dayKey => {
-              const day = itinerary[dayKey];
-              if (!day.Morning) return null; // Add guard for incomplete data
-
-              return (
-                <div key={dayKey} className="border-b border-cyan-200 pb-4 last:border-b-0">
-                  <h3 className="text-xl font-semibold text-cyan-700 mb-3">{dayKey}</h3>
-                  <div className="space-y-4 pl-4 text-cyan-800">
-                    
-                    {/* --- Morning --- */}
-                    <div className="flex">
-                      <ActivityIcon type={day.Morning.Type} />
-                      <div>
-                        <span className="font-semibold">Morning</span>
-                        {isEditing ? (
-                          <div className="mt-1 space-y-1">
-                            <input
-                              type="text"
-                              value={day.Morning.Activity}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Morning', 'Activity', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Activity"
-                            />
-                            <textarea
-                              value={day.Morning.Notes}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Morning', 'Notes', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              rows={2}
-                              placeholder="Notes"
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <p className="font-medium text-cyan-900">{day.Morning.Activity}</p>
-                            <p className="text-sm text-cyan-700">{day.Morning.Notes}</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* --- Lunch --- */}
-                    <div className="flex">
-                      <Utensils size={16} className="mr-2 text-cyan-600 flex-shrink-0" />
-                      <div>
-                        <span className="font-semibold">Lunch</span>
-                        {isEditing ? (
-                           <div className="mt-1 space-y-1">
-                            <input
-                              type="text"
-                              value={day.Lunch.Restaurant}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Lunch', 'Restaurant', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Restaurant"
-                            />
-                            <input
-                              type="text"
-                              value={day.Lunch.Cuisine}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Lunch', 'Cuisine', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Cuisine"
-                            />
-                          </div>
-                        ) : (
-                          <p>{day.Lunch.Restaurant} <span className="text-sm text-cyan-700">({day.Lunch.Cuisine} - {day.Lunch["Price Range"]})</span></p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* --- Afternoon --- */}
-                    <div className="flex">
-                      <ActivityIcon type={day.Afternoon.Type} />
-                      <div>
-                        <span className="font-semibold">Afternoon</span>
-                        {isEditing ? (
-                          <div className="mt-1 space-y-1">
-                            <input
-                              type="text"
-                              value={day.Afternoon.Activity}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Afternoon', 'Activity', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Activity"
-                            />
-                            <textarea
-                              value={day.Afternoon.Notes}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Afternoon', 'Notes', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              rows={2}
-                              placeholder="Notes"
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <p className="font-medium text-cyan-900">{day.Afternoon.Activity}</p>
-                            <p className="text-sm text-cyan-700">{day.Afternoon.Notes}</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* --- Dinner --- */}
-                    <div className="flex">
-                      <Utensils size={16} className="mr-2 text-cyan-600 flex-shrink-0" />
-                      <div>
-                        <span className="font-semibold">Dinner</span>
-                         {isEditing ? (
-                           <div className="mt-1 space-y-1">
-                            <input
-                              type="text"
-                              value={day.Dinner.Restaurant}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Dinner', 'Restaurant', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Restaurant"
-                            />
-                            <input
-                              type="text"
-                              value={day.Dinner.Cuisine}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Dinner', 'Cuisine', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Cuisine"
-                            />
-                          </div>
-                        ) : (
-                          // --- FIX: Corrected typo 'CZisine' to 'Cuisine' ---
-                          <p>{day.Dinner.Restaurant} <span className="text-sm text-cyan-700">({day.Dinner.Cuisine} - {day.Dinner["Price Range"]})</span></p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* --- UPDATED: Hotel Display --- */}
-                    <div className="flex">
-                      <Home size={16} className="mr-2 text-cyan-600 flex-shrink-0" />
-                      <div>
-                        <span className="font-semibold">Hotel / Stay</span>
-                         {isEditing ? (
-                           <div className="mt-1 space-y-1">
-                            <input
-                              type="text"
-                              value={day.Hotel.Name}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Hotel', 'Name', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Hotel Name"
-                            />
-                            <input
-                              type="text"
-                              value={day.Hotel.Type}
-                              // --- FIX: Corrected typo 'e.g.target.value' to 'e.target.value' ---
-                              onChange={(e) => handleItineraryChange(dayKey, 'Hotel', 'Type', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Hotel Type"
-                            />
-                            {/* --- NEW: Hotel Cost Input --- */}
-                            <input
-                              type="text"
-                              value={day.Hotel.Cost}
-                              onChange={(e) => handleItineraryChange(dayKey, 'Hotel', 'Cost', e.target.value)}
-                              className="w-full p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                              placeholder="Hotel Cost"
-                            />
-                          </div>
-                        ) : (
-                          <>
-                            <p>{day.Hotel.Name} <span className="text-sm text-cyan-700">({day.Hotel.Type})</span></p>
-                            <p className="text-sm text-cyan-700 font-medium">Cost: {day.Hotel.Cost}</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* --- UPDATED: Cost (with currency symbol) --- */}
-                    <div className="flex items-center pt-2">
-                      <DollarSign size={16} className="mr-2 text-cyan-600 flex-shrink-0" />
-                      {/* --- UPDATED: Label --- */}
-                      <span className="font-semibold">Food & Activities Cost:</span>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={day["Estimated Cost"]}
-                          onChange={(e) => handleCostChange(dayKey, e.target.value)}
-                          className="w-1-2 ml-2 p-1 border border-cyan-300 rounded-md bg-cyan-50"
-                          rows={1}
-                        />
-                      ) : (
-                        <p className="ml-2 font-medium">{day["Estimated Cost"]}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* State Machine Render */}
+      {uiState === 'form' && renderForm()}
+      {uiState === 'loading' && <LoadingScreen />}
+      {uiState === 'results' && renderResults()}
+      {uiState === 'error' && renderError()}
     </div>
   );
 }
