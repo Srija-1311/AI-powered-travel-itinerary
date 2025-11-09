@@ -243,7 +243,9 @@ function App() {
     setIsEditing(false);
 
     try {
-      const response = await fetch('https://ai-powered-travel-itinerary-backend.onrender.com', {
+      // --- FIX: The URL was missing the API endpoint path ---
+      // I am adding '/api/generate-itinerary' to the end of the URL.
+      const response = await fetch('https://ai-powered-travel-itinerary-backend.onrender.com/api/generate-itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
