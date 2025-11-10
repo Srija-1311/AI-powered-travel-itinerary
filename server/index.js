@@ -115,9 +115,14 @@ app.post('/api/generate-itinerary', async (req, res) => {
 
       // --- FIX: Updated extractCost function ---
       const extractCost = (str) => {
-        // Remove commas and find all numbers (including decimals)
-        const matches = str.replace(/,/g, '').match(/([\d\.]+)/g); 
-        const currencyMatch = str.match(/([A-Z]{3})/); // Find currency code
+        if (!str) return { low: 0, high: 0, ccy: null };
+        
+        // 1. Remove all commas
+        const cleanStr = str.toString().replace(/,/g, '');
+        
+        // 2. Find all number-like strings (integers or decimals)
+        const matches = cleanStr.match(/([\d\.]+)/g);
+        const currencyMatch = cleanStr.match(/([A-Z]{3})/); // Find currency code
         
         let low = 0, high = 0;
         let ccy = currencyMatch ? currencyMatch[1] : null;
@@ -126,7 +131,7 @@ app.post('/api/generate-itinerary', async (req, res) => {
           if (matches.length > 1) {
             const num1 = parseFloat(matches[0]);
             const num2 = parseFloat(matches[1]);
-            // Use Math.min and Math.max to find the true low and high
+            // 3. Use Math.min and Math.max to find the true low and high
             low = Math.min(num1, num2);
             high = Math.max(num1, num2);
           } else if (matches.length === 1) {

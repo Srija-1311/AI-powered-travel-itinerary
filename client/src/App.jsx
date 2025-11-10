@@ -271,30 +271,32 @@ function App() {
         const day = data.itinerary[dayKey];
         if (!day) return { name: dayKey, Cost: 0 }; 
 
-        // This removes ALL non-numeric characters except the dash
-        const costString = day["Estimated Cost"]?.toString().replace(/[^0-9-]/g, '') || "0";
-        const costParts = costString.split('-');
-        
-        const hotelCostString = day.Hotel?.Cost?.toString().replace(/[^0-9-]/g, '') || "0";
-        const hotelCostParts = hotelCostString.split('-');
-        
-        let avgCost = 0;
-        let avgHotelCost = 0;
+        // --- NEW ROBUST PARSING LOGIC ---
+        const extractAvgCost = (str) => {
+          if (!str) return 0;
+          
+          // 1. Remove commas
+          const cleanStr = str.toString().replace(/,/g, '');
+          
+          // 2. Find all numbers (integers or decimals)
+          const matches = cleanStr.match(/([\d\.]+)/g);
+          
+          if (!matches) return 0;
 
-        // This logic handles ranges (e.g., "15000-20000") and single values (e.g., "15000")
-        if (costParts.length === 2) {
-          avgCost = ((parseInt(costParts[0], 10) || 0) + (parseInt(costParts[1], 10) || 0)) / 2;
-        } else if (costParts.length === 1) {
-          avgCost = parseInt(costParts[0], 10) || 0;
-        }
+          if (matches.length > 1) {
+            const num1 = parseFloat(matches[0]);
+            const num2 = parseFloat(matches[1]);
+            return ((num1 || 0) + (num2 || 0)) / 2;
+          } else if (matches.length === 1) {
+            return parseFloat(matches[0]) || 0;
+          }
+          return 0;
+        };
+        // --- END NEW LOGIC ---
 
-        if (hotelCostParts.length === 2) {
-          avgHotelCost = ((parseInt(hotelCostParts[0], 10) || 0) + (parseInt(hotelCostParts[1], 10) || 0)) / 2;
-        } else if (hotelCostParts.length === 1) {
-          avgHotelCost = parseInt(hotelCostParts[0], 10) || 0;
-        }
+        const avgCost = extractAvgCost(day["Estimated Cost"]);
+        const avgHotelCost = extractAvgCost(day.Hotel?.Cost);
         
-        // Ensure we don't plot NaN
         const totalDailyCost = (isNaN(avgCost) ? 0 : avgCost) + (isNaN(avgHotelCost) ? 0 : avgHotelCost);
         return { name: dayKey.replace(' ', ''), Cost: totalDailyCost };
       });
