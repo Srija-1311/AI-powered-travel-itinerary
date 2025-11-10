@@ -56,7 +56,7 @@ const ActivityIcon = ({ type }) => {
   }
 };
 
-// --- Loading Component (This component fixes the crash) ---
+// --- Loading Component (No changes) ---
 const LoadingScreen = () => {
   const messages = ["Finding the best spots...", "Packing your virtual bags...", "Checking passport...", "Crafting your adventure...", "Asking the AI..."];
   const [message, setMessage] = useState(messages[0]);
@@ -68,7 +68,7 @@ const LoadingScreen = () => {
       setMessage(messages[index]);
     }, 2000);
     return () => clearInterval(interval);
-  }, []); // Empty dependency array is correct here
+  }, []); 
 
   return (
     <div className="flex flex-col items-center justify-center h-screen text-indigo-800">
@@ -81,9 +81,9 @@ const LoadingScreen = () => {
 
 // --- Main App Component ---
 function App() {
-  // --- STATE ---
-  const [uiState, setUiState] = useState('form'); // 'form', 'loading', 'results', 'error'
-  const [formStep, setFormStep] = useState(1); // For wizard
+  // --- STATE (No changes) ---
+  const [uiState, setUiState] = useState('form'); 
+  const [formStep, setFormStep] = useState(1); 
   const [formData, setFormData] = useState({
     destination: '',
     days: 3,
@@ -97,9 +97,9 @@ function App() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeDay, setActiveDay] = useState('Day 1'); // For results tabs
+  const [activeDay, setActiveDay] = useState('Day 1'); 
 
-  // --- FORM HANDLERS ---
+  // --- FORM HANDLERS (No changes) ---
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -126,7 +126,7 @@ function App() {
     setError(null);
   };
 
-  // --- ITINERARY EDIT HANDLERS ---
+  // --- ITINERARY EDIT HANDLERS (No changes) ---
   const handleItineraryChange = (dayKey, period, field, value) => {
     setItinerary(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [period]: { ...prev[dayKey][period], [field]: value }}}));
   };
@@ -147,7 +147,7 @@ function App() {
   };
 
 
-  // --- PDF, SHARE, COPY HANDLERS ---
+  // --- PDF, SHARE, COPY HANDLERS (No changes) ---
   const handleShare = () => {
     if (!itinerary) return;
     let itineraryText = `My Trip to ${formData.destination}\n\nTotal Estimated Cost: ${totalCost}\n\n`;
@@ -232,7 +232,7 @@ function App() {
 
   // --- API Call ---
   const handleGenerateItinerary = async () => {
-    setUiState('loading');
+    setUiState('loading'); 
     setError(null);
     setItinerary(null);
     setTotalCost(null);
@@ -258,13 +258,15 @@ function App() {
 
       setItinerary(data.itinerary);
       setTotalCost(data.totalCost);
-      setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1');
+      setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1'); 
 
-      // --- Chart Data Processing (with comma fix) ---
+      // --- *** BUG FIX SECTION *** ---
       const processedChartData = Object.keys(data.itinerary).map(dayKey => {
         const day = data.itinerary[dayKey];
         if (!day) return { name: dayKey, Cost: 0 }; 
 
+        // --- FIX #1: Robust comma/char removal for graph data ---
+        // This removes ALL non-numeric characters except the dash
         const costString = day["Estimated Cost"]?.toString().replace(/[^0-9-]/g, '') || "0";
         const costParts = costString.split('-');
         
@@ -274,21 +276,24 @@ function App() {
         let avgCost = 0;
         let avgHotelCost = 0;
 
+        // This logic handles ranges (e.g., "15000-20000") and single values (e.g., "15000")
         if (costParts.length === 2) {
-          avgCost = (parseInt(costParts[0], 10) || 0 + parseInt(costParts[1], 10) || 0) / 2;
+          avgCost = ((parseInt(costParts[0], 10) || 0) + (parseInt(costParts[1], 10) || 0)) / 2;
         } else if (costParts.length === 1) {
           avgCost = parseInt(costParts[0], 10) || 0;
         }
 
         if (hotelCostParts.length === 2) {
-          avgHotelCost = (parseInt(hotelCostParts[0], 10) || 0 + parseInt(hotelCostParts[1], 10) || 0) / 2;
+          avgHotelCost = ((parseInt(hotelCostParts[0], 10) || 0) + (parseInt(hotelCostParts[1], 10) || 0)) / 2;
         } else if (hotelCostParts.length === 1) {
           avgHotelCost = parseInt(hotelCostParts[0], 10) || 0;
         }
         
+        // Ensure we don't plot NaN
         const totalDailyCost = (isNaN(avgCost) ? 0 : avgCost) + (isNaN(avgHotelCost) ? 0 : avgHotelCost);
         return { name: dayKey.replace(' ', ''), Cost: totalDailyCost };
       });
+      // --- *** END BUG FIX SECTION *** ---
       
       setChartData(processedChartData);
       setUiState('results'); 
@@ -300,7 +305,7 @@ function App() {
     }
   };
   
-  // --- Interest Options Array (New Icons) ---
+  // --- Interest Options Array (No changes) ---
   const interestOptions = [
     { label: 'Food', icon: <Utensils size={24} /> },
     { label: 'Adventure', icon: <Mountain size={24} /> },
@@ -311,6 +316,7 @@ function App() {
   ];
 
   // --- RENDER FUNCTIONS ---
+
   const renderForm = () => (
     <div className="max-w-xl mx-auto w-full">
       <header className="text-center mb-8">
@@ -607,7 +613,17 @@ function App() {
                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <XAxis dataKey="name" stroke="#3730a3" />
                   <YAxis stroke="#3730a3" />
-                  <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', borderColor: '#4f46e5' }} labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} />
+                  {/* --- FIX #2: Make tooltip text visible --- */}
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                      borderRadius: '8px', 
+                      borderColor: '#4f46e5',
+                      border: '1px solid #c7d2fe'
+                    }} 
+                    labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} 
+                    itemStyle={{ color: '#3730a3' }} // <-- This makes the text dark indigo
+                  />
                   <Legend />
                   <Bar dataKey="Cost" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                 </BarChart>
