@@ -113,24 +113,31 @@ app.post('/api/generate-itinerary', async (req, res) => {
       const costString = day["Estimated Cost"] || "0";
       const hotelCostString = day.Hotel?.Cost || "0";
 
+      // --- FIX: Updated extractCost function ---
       const extractCost = (str) => {
-        const matches = str.replace(/,/g, '').match(/([\d\.]+)/g); // Remove commas, find numbers
+        // Remove commas and find all numbers (including decimals)
+        const matches = str.replace(/,/g, '').match(/([\d\.]+)/g); 
         const currencyMatch = str.match(/([A-Z]{3})/); // Find currency code
         
         let low = 0, high = 0;
+        let ccy = currencyMatch ? currencyMatch[1] : null;
+
         if (matches) {
           if (matches.length > 1) {
-            low = parseFloat(matches[0]);
-            high = parseFloat(matches[1]);
+            const num1 = parseFloat(matches[0]);
+            const num2 = parseFloat(matches[1]);
+            // Use Math.min and Math.max to find the true low and high
+            low = Math.min(num1, num2);
+            high = Math.max(num1, num2);
           } else if (matches.length === 1) {
             low = parseFloat(matches[0]);
-            high = low;
+            high = low; // If only one number, low and high are the same
           }
         }
         
-        let ccy = currencyMatch ? currencyMatch[1] : null;
         return { low, high, ccy };
       };
+      // --- END FIX ---
 
       const dayCost = extractCost(costString);
       const hotelCost = extractCost(hotelCostString);
@@ -147,6 +154,7 @@ app.post('/api/generate-itinerary', async (req, res) => {
 
     let totalCost;
     if (allCurrenciesSame) {
+      // Format with toLocaleString to add commas back correctly
       totalCost = `${totalCostLow.toLocaleString()}-${totalCostHigh.toLocaleString()} ${firstCurrency || ''}`;
     } else {
       totalCost = "Multiple currencies detected. Check daily totals.";

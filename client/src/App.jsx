@@ -81,8 +81,8 @@ const LoadingScreen = () => {
 
 // --- Main App Component ---
 function App() {
-  // --- STATE (No changes) ---
-  const [uiState, setUiState] = useState('form'); 
+  // --- STATE ---
+  const [uiState, setUiState] = useState('form'); // 'form', 'loading', 'results', 'error'
   const [formStep, setFormStep] = useState(1); 
   const [formData, setFormData] = useState({
     destination: '',
@@ -97,7 +97,8 @@ function App() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeDay, setActiveDay] = useState('Day 1'); 
+  const [activeDay, setActiveDay] = useState('Day 1'); // For results tabs
+  const [currencySymbol, setCurrencySymbol] = useState(''); // <-- NEW: To store currency
 
   // --- FORM HANDLERS (No changes) ---
   const handleChange = (e) => {
@@ -260,12 +261,16 @@ function App() {
       setTotalCost(data.totalCost);
       setActiveDay(Object.keys(data.itinerary)[0] || 'Day 1'); 
 
+      // --- FIX: Extract and set currency symbol ---
+      const currencyMatch = data.totalCost?.match(/([A-Z]{3})$/);
+      setCurrencySymbol(currencyMatch ? currencyMatch[1] : '');
+      // --- END FIX ---
+
       // --- *** BUG FIX SECTION *** ---
       const processedChartData = Object.keys(data.itinerary).map(dayKey => {
         const day = data.itinerary[dayKey];
         if (!day) return { name: dayKey, Cost: 0 }; 
 
-        // --- FIX #1: Robust comma/char removal for graph data ---
         // This removes ALL non-numeric characters except the dash
         const costString = day["Estimated Cost"]?.toString().replace(/[^0-9-]/g, '') || "0";
         const costParts = costString.split('-');
@@ -612,8 +617,14 @@ function App() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                   <XAxis dataKey="name" stroke="#3730a3" />
-                  <YAxis stroke="#3730a3" />
-                  {/* --- FIX #2: Make tooltip text visible --- */}
+                  
+                  {/* --- FIX: Format Y-Axis ticks --- */}
+                  <YAxis 
+                    stroke="#3730a3" 
+                    tickFormatter={(tick) => new Intl.NumberFormat('en-US').format(tick)} 
+                  />
+                  
+                  {/* --- FIX: Format Tooltip to add currency --- */}
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.9)', 
@@ -622,8 +633,11 @@ function App() {
                       border: '1px solid #c7d2fe'
                     }} 
                     labelStyle={{ color: '#4f46e5', fontWeight: 'bold' }} 
-                    itemStyle={{ color: '#3730a3' }} // <-- This makes the text dark indigo
+                    itemStyle={{ color: '#3730a3' }}
+                    formatter={(value) => `${new Intl.NumberFormat('en-US').format(value)} ${currencySymbol}`}
                   />
+                  {/* --- END FIXES --- */}
+                  
                   <Legend />
                   <Bar dataKey="Cost" fill="#4f46e5" radius={[4, 4, 0, 0]} />
                 </BarChart>
